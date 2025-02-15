@@ -3,104 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Impact du tronc commun et de la ségrégation scolaire</title>
-    
-    <!-- React et ReactDOM -->
-    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
-    
-    <!-- Dependencies -->
-    <script src="https://unpkg.com/prop-types@15.7.2/prop-types.min.js"></script>
-    <script src="https://unpkg.com/d3-scale@3.2.3/dist/d3-scale.min.js"></script>
-    <script src="https://unpkg.com/d3-shape@2.0.0/dist/d3-shape.min.js"></script>
-    <script src="https://unpkg.com/d3-array@2.8.0/dist/d3-array.min.js"></script>
-    
-    <!-- Recharts -->
-    <script src="https://unpkg.com/recharts@2.1.2/umd/Recharts.js"></script>
-    
-    <!-- Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Impact du tronc commun</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .chart-container {
+            margin-bottom: 30px;
+        }
+        #segregationSlider {
+            width: 100%;
+            margin: 20px 0;
+        }
+    </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div class="container">
+        <h1>Impact du tronc commun et de la ségrégation scolaire</h1>
+        
+        <input type="range" id="segregationSlider" min="0" max="100" value="30">
+        <p>Niveau de ségrégation : <span id="segregationValue">30</span>%</p>
 
-    <script type="text/babel">
-        const { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } = Recharts;
+        <div class="chart-container">
+            <canvas id="performanceChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="dispersionChart"></canvas>
+        </div>
+    </div>
 
-        const TrackingEffect = () => {
-            const [segregationLevel, setSegregationLevel] = React.useState(30);
+    <script>
+        function generateData(segregationLevel) {
+            const years = [4, 5, 6, 7, 8, 9, 10, 11, 12];
+            const segregationImpact = segregationLevel / 100;
+            
+            return years.map(year => {
+                const trackingEffect = (year - 4) * 2;
+                return {
+                    year,
+                    highSES: Math.round(540 - (segregationImpact * 10) + (trackingEffect * 0.5)),
+                    midSES: Math.round(500 + (trackingEffect * 1.0) - (segregationImpact * 15)),
+                    lowSES: Math.round(460 + (trackingEffect * 1.5) - (segregationImpact * 20)),
+                    dispersion: Math.round(Math.max(20, 40 + (segregationImpact * 40) - (trackingEffect * 1.5)))
+                };
+            });
+        }
 
-            const data = React.useMemo(() => {
-                const result = [];
-                const segregationImpact = segregationLevel / 100;
+        // Initial charts setup
+        const ctx1 = document.getElementById('performanceChart').getContext('2d');
+        const ctx2 = document.getElementById('dispersionChart').getContext('2d');
+        const initialData = generateData(30);
 
-                for (let years = 4; years <= 12; years++) {
-                    const trackingEffect = (years - 4) * 2;
-                    result.push({
-                        annees: years,
-                        'Élèves favorisés': Math.round(540 - (segregationImpact * 10) + (trackingEffect * 0.5)),
-                        'Élèves moyens': Math.round(500 + (trackingEffect * 1.0) - (segregationImpact * 15)),
-                        'Élèves défavorisés': Math.round(460 + (trackingEffect * 1.5) - (segregationImpact * 20)),
-                        'Dispersion': Math.round(Math.max(20, 40 + (segregationImpact * 40) - (trackingEffect * 1.5)))
-                    });
+        const perfChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+                datasets: [{
+                    label: 'Élèves favorisés',
+                    data: initialData.map(d => d.highSES),
+                    borderColor: 'rgb(37, 99, 235)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Élèves moyens',
+                    data: initialData.map(d => d.midSES),
+                    borderColor: 'rgb(5, 150, 105)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Élèves défavorisés',
+                    data: initialData.map(d => d.lowSES),
+                    borderColor: 'rgb(220, 38, 38)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        min: 400,
+                        max: 600,
+                        title: {
+                            display: true,
+                            text: 'Score PISA'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Durée du tronc commun (années)'
+                        }
+                    }
                 }
-                return result;
-            }, [segregationLevel]);
+            }
+        });
 
-            return (
-                <div className="max-w-4xl mx-auto p-4">
-                    <h1 className="text-2xl mb-4">Effet du tronc commun et de la ségrégation scolaire</h1>
-                    
-                    <div className="mb-6">
-                        <label className="block mb-2">
-                            Niveau de ségrégation : {segregationLevel}%
-                        </label>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={segregationLevel}
-                            onChange={e => setSegregationLevel(Number(e.target.value))}
-                            className="w-full"
-                        />
-                    </div>
+        const dispChart = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+                datasets: [{
+                    label: 'Indice de dispersion',
+                    data: initialData.map(d => d.dispersion),
+                    borderColor: 'rgb(107, 114, 128)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Indice de dispersion'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Durée du tronc commun (années)'
+                        }
+                    }
+                }
+            }
+        });
 
-                    <div style={{ width: '100%', height: 400 }} className="mb-8">
-                        <ResponsiveContainer>
-                            <LineChart data={data}>
-                                <XAxis dataKey="annees" />
-                                <YAxis domain={[400, 600]} />
-                                <Tooltip />
-                                <Legend />
-                                <Line type="monotone" dataKey="Élèves favorisés" stroke="#2563eb" />
-                                <Line type="monotone" dataKey="Élèves moyens" stroke="#059669" />
-                                <Line type="monotone" dataKey="Élèves défavorisés" stroke="#dc2626" />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
+        function updateCharts(segregationLevel) {
+            const data = generateData(segregationLevel);
+            
+            // Performance Chart
+            perfChart.data.datasets[0].data = data.map(d => d.highSES);
+            perfChart.data.datasets[1].data = data.map(d => d.midSES);
+            perfChart.data.datasets[2].data = data.map(d => d.lowSES);
+            
+            // Dispersion Chart
+            dispChart.data.datasets[0].data = data.map(d => d.dispersion);
+            
+            perfChart.update();
+            dispChart.update();
+        }
 
-                    <div style={{ width: '100%', height: 400 }}>
-                        <ResponsiveContainer>
-                            <LineChart data={data}>
-                                <XAxis dataKey="annees" />
-                                <YAxis domain={[0, 100]} />
-                                <Tooltip />
-                                <Legend />
-                                <Line type="monotone" dataKey="Dispersion" stroke="#6b7280" />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            );
-        };
-
-        ReactDOM.render(
-            <TrackingEffect />,
-            document.getElementById('root')
-        );
+        // Slider event handling
+        const slider = document.getElementById('segregationSlider');
+        const segregationValue = document.getElementById('segregationValue');
+        
+        slider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            segregationValue.textContent = value;
+            updateCharts(value);
+        });
     </script>
 </body>
 </html>
